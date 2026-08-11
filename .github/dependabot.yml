@@ -1,0 +1,35 @@
+version: 2
+
+updates:
+  # Workflow actions are pinned to commit hashes, which no one can read by eye.
+  # Without this, a pinned hash stays frozen forever and nobody notices when the
+  # action it points at gains a security fix. Dependabot updates the hash and the
+  # trailing version comment together.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # All actions in one pull request. An action either works or the build fails
+      # loudly, so there is nothing subtle to isolate.
+      actions:
+        patterns:
+          - "*"
+
+  # Quiet today, because the only package reference is the test framework. That
+  # changes as soon as NuCaps.Cli takes NuGet.Protocol, which brings nine packages
+  # with it.
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # Minor and patch updates travel together. Major updates are deliberately
+      # left out of the group, so each one arrives on its own and gets read. A
+      # library major can change behavior in ways a passing build does not catch.
+      nuget-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
