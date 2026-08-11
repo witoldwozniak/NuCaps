@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# This workflow only reads the repository. Grant nothing else.
+permissions:
+  contents: read
+
+env:
+  # .envrc covers local runs only, so CI needs its own opt-out.
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  TESTINGPLATFORM_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # Actions are pinned to a commit hash, not a tag. A tag can be repointed at
+      # different code by whoever owns the action, and the workflow would run it
+      # without any change here. The trailing comment records which release the
+      # hash came from, and Dependabot updates both together.
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      # ContinuousIntegrationBuild turns warnings into errors. Directory.Build.props
+      # sets that only when this variable is true, so this is the one place the gate
+      # actually runs.
+      - name: Build, treating warnings as errors
+        run: dotnet build NuCaps.slnx -p:ContinuousIntegrationBuild=true
+
+      - name: Test
+        run: dotnet test
+
+      # Enforces the style and naming rules in .editorconfig, which nothing else
+      # checks automatically.
+      - name: Check formatting
+        run: dotnet format NuCaps.slnx --verify-no-changes
