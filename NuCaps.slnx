@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/NuCaps.Core/NuCaps.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/NuCaps.Core.Tests/NuCaps.Core.Tests.csproj" />
+  </Folder>
+</Solution>

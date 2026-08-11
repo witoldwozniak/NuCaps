@@ -1,0 +1,28 @@
+# Decisions
+
+This document records the decisions that shape this repository, each with its reason. It exists so that a settled question is not argued again from memory, and so that a reader can see why the project looks the way it does. Add an entry when a decision is made. Do not delete entries. If a decision is reversed, add a new one that says so and why.
+
+## Analysis
+
+- **Target `net10.0` only. netstandard2.0 is deferred.** `System.Reflection.Metadata` ships inside the .NET 10 shared framework, so the analysis engine carries no package dependencies at all. On netstandard2.0 the same code needs three packages and a hand-written `IsExternalInit` type before `record` and `init` compile. Revisit this if there is a concrete reason to embed `NuCaps.Core` in a Roslyn analyzer or an MSBuild task, because both of those still run on .NET Framework inside Visual Studio.
+- **Read metadata with `System.Reflection.Metadata`, not Mono.Cecil.** Read-only scanning at corpus scale is what `System.Reflection.Metadata` is designed for, and it needs no package reference. Mono.Cecil is stronger at rewriting IL, which this project never does.
+- **Analysis is static. NuCaps never loads or executes an assembly it inspects.** This is what makes it safe to analyze a package nobody trusts, and it is why any target framework can be read regardless of what NuCaps itself runs on.
+- **Capability profiles are per target framework, plus a computed union.** A single package ships one assembly per target framework and their capabilities genuinely differ. Reporting one arbitrary framework produces wrong answers: some assemblies bind native code through `GetProcAddress` and `dlsym` instead of P/Invoke declarations, so a profile taken from the wrong framework can report no native dependency where there are hundreds.
+
+## Testing
+
+- **Test with TUnit.** Chosen over xUnit v3 and the in-box xUnit v2 template. Source generated, no reflection at runtime, and fast across a large corpus run.
+- **`dotnet test` is the single check command.** TUnit runs on Microsoft.Testing.Platform, which the .NET 10 software development kit opts into through `global.json`. The older `TestingPlatformDotnetTestSupport` property is the legacy Visual Studio Test route and the .NET 10 software development kit rejects it.
+- **Opt out of test platform telemetry, in `.envrc`.** The `TUnit` package pulls in a telemetry extension. A tool that reports what other packages do should not send usage data itself.
+
+## Licensing and authorship
+
+- **Apache 2.0 for code.** `NuCaps.Core` exists to be embedded, and a copyleft license would block adoption in most corporate .NET environments. Apache 2.0 also carries a patent grant and matches the surrounding ecosystem.
+- **CC BY 4.0 for the capability data and the schema.** Code licenses do not fit data. Attribution keeps NuCaps named when its records are used elsewhere.
+- **No AI-generated code under `src/`.** Purely AI-generated output carries no copyright in the European Union, so it cannot be placed under Apache 2.0. Generated code in `src/` would leave part of this project unlicensed, which matters most for a library meant to be embedded. `CLAUDE.md` holds the full rule.
+
+## Conventions
+
+- **American English throughout.** Chosen for consistency with .NET and NuGet naming, which is American everywhere.
+- **Plain prose commit messages. No Conventional Commits.** An imperative subject under 50 characters, and a body wrapped at 72 columns that explains why. Conventional Commits earns its place when tooling reads commit messages to compute a version number, and nothing here does that.
+- **Semantic versioning, derived from git tags rather than from commit messages.** Semantic versioning is required of a published NuGet package. Deriving it from tags, with a tool such as MinVer or Nerdbank.GitVersioning, gives the same result without imposing a format on every commit. Decide the tool when publishing is set up.

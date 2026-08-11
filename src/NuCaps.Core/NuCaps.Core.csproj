@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      net10.0 only, deliberately. netstandard2.0 was considered and deferred.
+
+      It would let NuCaps.Core be embedded in a Roslyn analyzer or an MSBuild task, both of
+      which still run on .NET Framework inside Visual Studio. The price is three package
+      references (System.Reflection.Metadata, and through it System.Collections.Immutable and
+      System.Memory) plus an IsExternalInit shim, without which `record` and `init` do not
+      compile. On net10.0 all of it is in-box and the dependency count is zero, which is worth
+      something in a tool about supply chains.
+
+      Revisit when there is a concrete reason to embed.
+    -->
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>NuCaps.Core</PackageId>
+    <Description>
+      Derives capability metadata from compiled .NET assemblies by reading IL: which privileged
+      operations a package can reach. Analysis is static — assemblies are never loaded or
+      executed.
+    </Description>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <!--
+      TUnit runs on Microsoft.Testing.Platform, which executes a test project as its own
+      process rather than hosting it under VSTest. Hence OutputType Exe. Do not add
+      Microsoft.NET.Test.Sdk here: TUnit's docs say it breaks test discovery.
+    -->
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" Version="1.64.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/NuCaps.Core/NuCaps.Core.csproj" />
+  </ItemGroup>
+
+</Project>

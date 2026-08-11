@@ -1,0 +1,30 @@
+<Project>
+
+  <!-- Language and analysis. Applies to every project in the repository. -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+
+  <!--
+    Warnings are visible locally and fatal in CI. Exploration stays cheap while you are
+    working; nothing sloppy reaches the default branch. CI sets ContinuousIntegrationBuild,
+    which also makes the build deterministic.
+  -->
+  <PropertyGroup Condition="'$(ContinuousIntegrationBuild)' == 'true'">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!-- Package identity. Projects that ship set IsPackable to true themselves. -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <Authors>Witold Woźniak</Authors>
+    <Copyright>Copyright © 2026 Witold Woźniak</Copyright>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+  </PropertyGroup>
+
+</Project>
