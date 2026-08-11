@@ -1,6 +1,6 @@
 # Decisions
 
-This document records the decisions that shape this repository, each with its reason. It exists so that a settled question is not argued again from memory, and so that a reader can see why the project looks the way it does. Add an entry when a decision is made. Do not delete entries. If a decision is reversed, add a new one that says so and why.
+This document records the decisions that shape this repository, each with its reason, and the open questions that will become decisions later. It exists so that a settled question is not argued again from memory, and so that a reader can see why the project looks the way it does. Add an entry when a decision is made. Do not delete entries. If a decision is reversed, add a new one that says so and why. When an open question is settled, move it up into the sections above.
 
 ## Analysis
 
@@ -28,3 +28,9 @@ This document records the decisions that shape this repository, each with its re
 - **Plain prose commit messages. No Conventional Commits.** An imperative subject under 50 characters, and a body wrapped at 72 columns that explains why. Conventional Commits earns its place when tooling reads commit messages to compute a version number, and nothing here does that.
 - **Sign commits and tags with SSH, not GPG.** Signing proves a commit came from someone holding the author's key, which matters if a GitHub token is ever stolen: an attacker can still push, but the commits show as unverified. SSH signing reuses the existing ed25519 key, so there is no second key to expire, back up, or revoke, and GitHub shows the same verified badge either way. GPG would only win if verification were needed outside GitHub through a web of trust. Signing covers the source history only. Provenance for published packages is a separate matter, handled by trusted publishing.
 - **Semantic versioning, derived from git tags rather than from commit messages.** Semantic versioning is required of a published NuGet package. Deriving it from tags, with a tool such as MinVer or Nerdbank.GitVersioning, gives the same result without imposing a format on every commit. Decide the tool when publishing is set up.
+
+## Open questions
+
+These are not decided yet. Each one is recorded here so that it gets decided deliberately rather than by accident, on the day someone first needs an answer.
+
+- **How should the analysis be isolated when it runs over untrusted packages at scale?** `PEReader` and `MetadataReader` are not hardened against malformed input, and Microsoft documents out-of-bounds reads, crashes and hangs. So a package designed to attack the reader can take down whatever process reads it. The mitigation is to parse in an isolated process that can be killed, but the shape of that isolation is open. An operating system process with time and memory limits is the cheap answer. A purpose-built container with no network access, a read-only file system, and hard resource limits is the strong answer, and it costs an image to build, host, scan and keep patched, which is real surface for a project whose subject is supply-chain risk. This becomes pressing at corpus scale, where thousands of packages are analyzed unattended, and it does not need answering before then. It is a separate question from the continuous integration runner image, which needs no customization.
