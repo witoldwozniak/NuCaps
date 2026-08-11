@@ -3,10 +3,9 @@ using System.Reflection.Metadata;
 namespace NuCaps.Core.Tests;
 
 /// <summary>
-/// Proves the test harness runs, and that this project's central bet holds: that
-/// <see cref="MetadataReader"/> resolves with no package reference at all, because
-/// System.Reflection.Metadata ships in the net10.0 shared framework. If that ever stops being
-/// true, NuCaps.Core acquires a dependency, and this test is where it shows up first.
+/// Proves that the test harness runs, and that <see cref="MetadataReader"/> resolves without a
+/// package reference, because System.Reflection.Metadata ships inside the net10.0 shared
+/// framework. If this test ever fails, reading metadata has started to need a package.
 /// </summary>
 public class HarnessTests
 {
