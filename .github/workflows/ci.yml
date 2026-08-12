@@ -29,6 +29,25 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # ShellCheck 0.9.0 ships on the ubuntu-24.04 image, so this needs no install
+      # step and adds no dependency. A developer machine running a newer ShellCheck
+      # is the stricter of the two, so local runs catch more than this does, never
+      # less. This step needs no software development kit, so it runs first and
+      # fails fast.
+      #
+      # Scripts are found by their shebang rather than from a fixed list, because
+      # neither of them carries a .sh extension and a list gets stale. The empty
+      # check stops a broken search from passing as "nothing to check".
+      - name: Check shell scripts
+        run: |
+          mapfile -t scripts < <(grep -rlE '^#!.*sh$' .githooks script)
+          if [[ ${#scripts[@]} -eq 0 ]]; then
+            echo "Found no shell scripts. The search is wrong, or the scripts moved." >&2
+            exit 1
+          fi
+          printf 'Checking %s\n' "${scripts[@]}"
+          shellcheck "${scripts[@]}"
+
       - name: Set up .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
