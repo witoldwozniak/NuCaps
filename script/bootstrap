@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+#
+# Sets up a fresh clone for development. Run it once after cloning. Running it
+# again is safe and does nothing new.
+#
+#   script/bootstrap
+#
+# This follows the "Scripts to Rule Them All" convention: one script a newcomer
+# can run without knowing anything about the stack.
+
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+step() { printf '\n==> %s\n' "$1"; }
+note() { printf '    %s\n' "$1"; }
+
+fail() {
+  printf '\nSetup stopped: %s\n' "$1" >&2
+  exit 1
+}
+
+step "Checking the .NET software development kit"
+
+if ! command -v dotnet >/dev/null 2>&1; then
+  note "dotnet was not found on your PATH."
+  fail "install the .NET 10 software development kit from https://dotnet.microsoft.com/download"
+fi
+
+# global.json pins the version this project builds with. If the installed one
+# does not satisfy that pin, dotnet says so itself, and its message names both
+# the required version and what you have. Reprinting it beats parsing it.
+if ! sdk_version="$(dotnet --version 2>&1)"; then
+  printf '%s\n' "$sdk_version" >&2
+  fail "the installed software development kit does not satisfy global.json"
+fi
+
+note "Using .NET $sdk_version"
+
+step "Pointing git at this repository's hooks"
+
+# Git does not share hooks, because .git/hooks is not committed. This is the one
+# step that cannot be skipped: without it, the commit message check never runs,
+# and force pushes are blocked on main, so a bad message there is permanent.
+git config core.hooksPath .githooks
+note "core.hooksPath is now .githooks"
+note "Commit messages are checked against the convention in CLAUDE.md."
+
+step "Restoring packages"
+
+dotnet restore
+
+if [[ -f .envrc ]]; then
+  step "One step is left for you"
+  if command -v direnv >/dev/null 2>&1; then
+    note "Run: direnv allow"
+    note "That loads .envrc, which opts this project out of test platform telemetry."
+    note "It cannot be automated. Allowing a .envrc is a trust decision, and a"
+    note "setup script that made it for you would defeat the point of direnv."
+  else
+    note "This project ships a .envrc that opts out of test platform telemetry."
+    note "Install direnv to use it, or export those variables yourself."
+  fi
+fi
+
+step "Ready"
+note "Run the checks with: dotnet test"

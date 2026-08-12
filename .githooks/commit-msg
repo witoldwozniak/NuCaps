@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+#
+# Checks a commit message against the convention in CLAUDE.md.
+#
+# This runs locally rather than in continuous integration because it has to. Force
+# pushes are blocked on main with no bypass, so a commit message that reaches the
+# branch can never be corrected. By the time a workflow could complain, it is too
+# late to act on.
+#
+# Enabled by: git config core.hooksPath .githooks
+
+set -euo pipefail
+
+message_file="$1"
+
+# Git appends comment lines, and in verbose mode a diff below a scissors line.
+# Neither is part of the message.
+mapfile -t lines < <(sed '/^# ------------------------ >8 /,$d' "$message_file" | grep -v '^#')
+
+# Trailing blank lines are added by git and carry no meaning.
+while [[ ${#lines[@]} -gt 0 && -z "${lines[-1]}" ]]; do
+  unset 'lines[-1]'
+done
+
+if [[ ${#lines[@]} -eq 0 ]]; then
+  exit 0  # Empty message. Git aborts the commit on its own.
+fi
+
+subject="${lines[0]}"
+
+# Git writes these itself, or rebase consumes them later. Not ours to judge.
+case "$subject" in
+  Merge\ *|Revert\ *|fixup!\ *|squash!\ *|amend!\ *) exit 0 ;;
+esac
+
+problems=()
+
+if [[ ${#subject} -gt 50 ]]; then
+  problems+=("Subject is ${#subject} characters. The limit is 50.")
+fi
+
+if [[ "$subject" =~ ^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)(\([^\)]*\))?!?: ]]; then
+  problems+=("Subject uses a Conventional Commits prefix. This project writes plain prose, because nothing here reads commit messages to compute a version number.")
+fi
+
+if [[ ${#lines[@]} -gt 1 && -n "${lines[1]}" ]]; then
+  problems+=("Line 2 must be blank. A subject and body run together render as one paragraph in git log.")
+fi
+
+for index in "${!lines[@]}"; do
+  [[ $index -lt 2 ]] && continue
+  line="${lines[$index]}"
+  [[ ${#line} -le 72 ]] && continue
+  # A single token longer than the limit cannot be wrapped by any means, so the
+  # line is allowed. Usually a URL or a long path. A line that is merely long
+  # still gets flagged, because moving the URL to its own line would fix it.
+  unwrappable=false
+  for token in $line; do
+    [[ ${#token} -gt 72 ]] && unwrappable=true
+  done
+  $unwrappable && continue
+  if [[ ${#line} -gt 72 ]]; then
+    problems+=("Line $((index + 1)) is ${#line} characters. Body lines wrap at 72, because git log does not wrap them for you.")
+  fi
+done
+
+if [[ ${#problems[@]} -gt 0 ]]; then
+  echo "The commit message does not follow this project's convention:" >&2
+  echo >&2
+  for problem in "${problems[@]}"; do
+    echo "  - $problem" >&2
+  done
+  echo >&2
+  echo "The message was kept. Edit it and commit again." >&2
+  exit 1
+fi
