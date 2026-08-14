@@ -4,7 +4,6 @@ obj/
 riderModule.iml
 /_ReSharper.Caches/
 .claude/settings.local.json
-.claude/settings.json
 .direnv/
 .idea/
 TestResults/
