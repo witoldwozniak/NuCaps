@@ -33,3 +33,16 @@ updates:
         update-types:
           - minor
           - patch
+
+  # Watches the software development kit version pinned in global.json. Continuous
+  # integration installs exactly what that file names, so a pin left alone means every
+  # build runs an older kit than the machine that wrote the code, and nothing says so.
+  # The pin exists because the versions already drifted once.
+  #
+  # The Dependabot documentation lists this ecosystem but does not state which files it
+  # reads. If global.json falls behind and no pull request arrives, this block does
+  # nothing and should be deleted rather than left as decoration.
+  - package-ecosystem: dotnet-sdk
+    directory: /
+    schedule:
+      interval: weekly
