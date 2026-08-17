@@ -1,20 +1,20 @@
 # NuCaps
 
-NuCaps produces open capability metadata for the NuGet ecosystem. It reports which privileged operations each package can reach, derived from the package's compiled IL (intermediate language, the instruction set that .NET compilers emit). Records are keyed to purl (package URL) identifiers. A command line tool is the reference producer.
+NuCaps produces open capability metadata for the NuGet ecosystem: which privileged operations each package can reach, read out of the package's compiled intermediate language. The [README](README.md) describes the project. This file governs how you work on it.
 
 ## Division of labor
 
 This section governs who is allowed to change what in this project.
 
-You help the user think, plan, review, analyze and test. You do not write this project's source code, and you do not write it indirectly by handing the user code to paste. The user authors every line under `src/`. That is the purpose of the arrangement, not an obstacle to work around.
+You help the user think, plan, review, analyze and test. The user authors every line under `src/`. That is the purpose of the arrangement, not an obstacle to work around.
 
 ### What you may and may not change
 
 - **You never produce `src/` code in any form.** This covers files, code blocks in the conversation, snippets, method bodies, and pseudocode detailed enough to transcribe. If it could be pasted into a `.cs` file, it is out of bounds.
 - **Give these instead.** The design argument with its trade-offs, the names of the types and methods to call and what they return, the case that must be handled, a review of what the user wrote, and the tests that judge it.
-- **The rest of the repository is yours to write.** This covers `tests/`, `docs/`, `README.md`, project files, continuous integration workflows, and `.editorconfig`.
+- **The rest of the repository is yours to write.** That is everything outside `src/`. The README's [Use of generative AI](README.md#use-of-generative-ai) section enumerates the kinds of file, and it is the only place that list lives.
 - **A general approval does not reach into `src/`.** "Go ahead", "sounds good", and approval of a plan authorize nothing there, because each of those approves an intent rather than a specific file.
-- **Never run a git command that changes the repository or its history.** The user owns every commit. Reading is fine when the user asks for it, for example `log`, `diff`, `show` and `status`. The deny list in `.claude/settings.json` blocks the common ones, but it is a safety net and not a boundary. It names specific subcommands, so a subcommand it does not name still runs, and a different spelling of a named one can slip past it. This rule is what holds. Add a subcommand to the deny list whenever you meet one it misses.
+- **Never run a git command that changes the repository or its history.** The user owns every commit. Reading is fine when the user asks for it, for example `log`, `diff`, `show` and `status`. `.claude/hooks/guard-bash` denies any git or dotnet invocation that is not a read, and the deny list in `.claude/settings.json` is a coarser fallback for when the hook does not run. Neither is a boundary, because a command can be assembled in ways no shell parser written in shell will read. This rule is what holds.
 - **Running a command is allowed. Changing the project with one is not.** Run these freely: `dotnet build`, `dotnet test`, `dotnet list package`, `dotnet format --verify-no-changes`. Propose rather than run these: `dotnet new`, `dotnet format` without the verify flag, `dotnet nuget push`.
 - **Adding or removing a dependency is the user's decision.** This holds whether the change comes from `dotnet add package` or from hand-editing a `<PackageReference>` element. Propose it with the reason. Every package `NuCaps.Core` takes on is inherited by everyone who embeds it.
 - **Keep the README's generative AI section true.** When you start writing a kind of file that section does not already cover, update the section in the same change.
@@ -23,11 +23,11 @@ You help the user think, plan, review, analyze and test. You do not write this p
 
 This section gives the reasoning, so that you can apply the limits to cases the list above does not name.
 
-NLnet's generative AI policy states that purely AI-generated output is not eligible for copyright protection in the European Union, so it cannot be placed under the Apache 2.0 license. Generated code in `src/` would therefore leave part of this project unlicensed. `NuCaps.Core` exists to be embedded by other people, which makes a sound license the whole point. This is a correctness problem, not a matter of style.
+NLnet's generative AI policy, version 1.1, is this project's standard for AI use. It states that purely AI-generated output is not eligible for copyright protection in the European Union, so it cannot be placed under the Apache 2.0 license. Generated code in `src/` would therefore leave part of this project unlicensed. `NuCaps.Core` exists to be embedded by other people, which makes a sound license the whole point. This is a correctness problem, not a matter of style.
 
 Handing the user code to paste does not avoid the problem. It places generated code in the repository under a human author's name. So the honest form of the rule is that the code never exists at all.
 
-This project follows NLnet's generative AI policy, version 1.1, as its standard for AI use. The README section [Use of generative AI](README.md#use-of-generative-ai) records what the assistant writes, and why a general description there satisfies the policy without a per-commit provenance log.
+The README's [Use of generative AI](README.md#use-of-generative-ai) section is the disclosure the policy asks for, so no commit needs a provenance trailer.
 
 ### Evidence
 
@@ -62,5 +62,7 @@ This section governs all project text: documentation, commit messages, code comm
 - **Literal language.** State a rule as a condition the reader can test for compliance. Replace idioms, metaphors, and clever phrasing with the literal condition they stand for: write "the analysis never loads or executes the assembly it inspects", not "the analysis keeps the package at arm's length". Where a precise word and an evocative word compete, choose the precise one.
 - **Spelling.** Write each product's name as that product capitalizes it in prose, for example **NuGet**, **.NET**, and **Linear**. Use the lowercase form for command line commands, binaries, paths, configuration file names, package identifiers, and URLs, for example `dotnet test` and `nuget.org`. Environment variables stay uppercase, for example `TESTINGPLATFORM_TELEMETRY_OPTOUT`.
 - **State the why with the what.** Where a rule is not self-evident, give its reason in the same sentence or the next one. A reader who knows the reason can apply the rule to cases the text does not list, and a bare rule invites narrow, literal compliance. This serves both audiences: models generalize from explanations, and people stop re-opening settled decisions.
-- **Commit messages.** Write plain prose. Use an imperative subject under 50 characters, then a blank line, then a body wrapped at 72 columns that explains why the change was made. Do not use Conventional Commits prefixes such as `feat:` or `fix:`, because nothing in this project reads commit messages to compute a version number.
+- **Commit messages.** Write plain prose. Use an imperative subject under 50 characters. Do not use Conventional Commits prefixes such as `feat:` or `fix:`, because nothing in this project reads commit messages to compute a version number.
+- **Write a commit body only for what the diff cannot show.** Three cases qualify: why the change happens now, an alternative you rejected, and a rule or file you deleted that nothing else records. Anything else already has a home. Mechanics belong in the file's own comment, the standing argument belongs in `docs/decisions.md`, and a user-visible change belongs in `CHANGELOG.md`. A body that repeats one of those becomes a fourth copy that drifts, and the commit is the copy nobody can correct after a push.
+- **A commit that needs more than one short paragraph is probably two commits.** Length in the body is a signal that the change covers more than one thing. Split it, and let each subject carry its own change.
 - **Calm register.** Write instructions in a normal voice and state each rule once. Capitalized emphasis ("NEVER", "CRITICAL"), exclamation marks, and repetition do not increase compliance. Current Claude models follow plainly stated instructions, and over-emphasis makes them apply a rule where it does not belong.
