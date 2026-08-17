@@ -54,8 +54,14 @@ for index in "${!lines[@]}"; do
   # A single token longer than the limit cannot be wrapped by any means, so the
   # line is allowed. Usually a URL or a long path. A line that is merely long
   # still gets flagged, because moving the URL to its own line would fix it.
+  #
+  # read -ra splits on whitespace and expands nothing. Writing this as
+  # "for token in $line" would let a * or a ? in the message expand against the
+  # working directory, so a body line could pick up a long file name, look
+  # unwrappable, and skip this check on one machine while failing on another.
   unwrappable=false
-  for token in $line; do
+  read -ra tokens <<<"$line"
+  for token in "${tokens[@]}"; do
     [[ ${#token} -gt 72 ]] && unwrappable=true
   done
   $unwrappable && continue
