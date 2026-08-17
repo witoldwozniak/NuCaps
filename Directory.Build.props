@@ -11,12 +11,22 @@
   </PropertyGroup>
 
   <!--
-    Warnings are visible locally and fatal in CI. Exploration stays cheap while you are
-    working; nothing sloppy reaches the default branch. CI sets ContinuousIntegrationBuild,
-    which also makes the build deterministic.
+    Warnings are errors everywhere, not only in continuous integration. A warning you can
+    build past is a warning you stop reading, and a project that carries warnings it has
+    learned to ignore cannot tell a new one apart from the noise. Fix it, or suppress it
+    in .editorconfig with the reason written next to it, so every suppression is a
+    decision somebody can find later.
+
+    MSBuildTreatWarningsAsErrors covers warnings raised by MSBuild tasks, which
+    TreatWarningsAsErrors does not reach on its own.
+
+    NuGet's own audit needs nothing here. The .NET 10 software development kit already
+    defaults NuGetAudit to true, NuGetAuditMode to all, and NuGetAuditLevel to low, which
+    is the strictest of each. Set them explicitly if a later kit weakens a default.
   -->
-  <PropertyGroup Condition="'$(ContinuousIntegrationBuild)' == 'true'">
+  <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors>
   </PropertyGroup>
 
   <!-- Package identity. Projects that ship set IsPackable to true themselves. -->

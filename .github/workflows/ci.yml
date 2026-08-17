@@ -15,6 +15,10 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
   TESTINGPLATFORM_TELEMETRY_OPTOUT: 1
   DOTNET_NOLOGO: 1
+  # Normalizes the file paths embedded in build output, which makes the build
+  # deterministic. This no longer decides anything about warnings. Directory.Build.props
+  # treats warnings as errors everywhere, so a warning fails a local run too.
+  ContinuousIntegrationBuild: true
 
 jobs:
   check:
