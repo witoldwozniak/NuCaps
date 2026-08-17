@@ -34,15 +34,13 @@ updates:
           - minor
           - patch
 
-  # Watches the software development kit version pinned in global.json. Continuous
-  # integration installs exactly what that file names, so a pin left alone means every
-  # build runs an older kit than the machine that wrote the code, and nothing says so.
-  # The pin exists because the versions already drifted once.
+  # There is deliberately no dotnet-sdk block. Do not add one.
   #
-  # The Dependabot documentation lists this ecosystem but does not state which files it
-  # reads. If global.json falls behind and no pull request arrives, this block does
-  # nothing and should be deleted rather than left as decoration.
-  - package-ecosystem: dotnet-sdk
-    directory: /
-    schedule:
-      interval: weekly
+  # Dependabot reads the version in global.json as a target and proposes a bump. That
+  # version is a floor, not a target, because rollForward: latestFeature already
+  # accepts any newer software development kit. A bump therefore buys nothing and
+  # raises the minimum: the 10.0.400 bump proposed in pull request 1 would have refused
+  # the 10.0.1xx feature band that Fedora and other distributions ship.
+  #
+  # Continuous integration installs the floor version on purpose. A build that passes
+  # on the oldest supported kit passes on newer ones.
