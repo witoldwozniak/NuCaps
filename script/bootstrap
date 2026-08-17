@@ -50,16 +50,47 @@ step "Restoring packages"
 
 dotnet restore
 
+# Succeeds when direnv has already been told to trust this .envrc, where 0 means
+# allowed. The JSON output is read first because its field names are stable across
+# versions, while the human-readable text is not. The text is only a fallback for a
+# direnv too old to understand --json.
+#
+# Read foundRC, and only foundRC. The same document also carries loadedRC, which
+# describes whatever .envrc the current shell has already loaded, and that is usually
+# a different file. Somebody who uses direnv elsewhere and runs this from a shell
+# still holding another project's environment gets "loadedRC": {"allowed": 0} sitting
+# next to "foundRC": {"allowed": 1}. A search across the whole document finds that
+# other zero and reports this .envrc as trusted when it is not. Whitespace is stripped
+# first so the match holds whether or not direnv pretty-prints the document.
+#
+# Anything this cannot read counts as not allowed, so an unclear answer prints the
+# reminder. Printing a reminder you do not need wastes a moment. Skipping one you do
+# need leaves the telemetry opt-out silently switched off, which is the failure that
+# matters here.
+envrc_is_allowed() {
+  local status_output found_rc
+  if status_output="$(direnv status --json 2>/dev/null)"; then
+    found_rc="$(tr -d '[:space:]' <<<"$status_output" | grep -o '"foundRC":{[^}]*}')" || return 1
+    [[ "$found_rc" == *'"allowed":0'* ]]
+    return
+  fi
+  direnv status 2>/dev/null | grep -qE '^Found RC allowed 0$'
+}
+
 if [[ -f .envrc ]]; then
-  step "One step is left for you"
-  if command -v direnv >/dev/null 2>&1; then
+  if ! command -v direnv >/dev/null 2>&1; then
+    step "One step is left for you"
+    note "This project ships a .envrc that opts out of .NET and test platform telemetry."
+    note "Install direnv to use it, or export those variables yourself."
+  elif envrc_is_allowed; then
+    step "Checking the environment"
+    note ".envrc is already allowed. Nothing to do."
+  else
+    step "One step is left for you"
     note "Run: direnv allow"
-    note "That loads .envrc, which opts this project out of test platform telemetry."
+    note "That loads .envrc, which opts this project out of .NET and test platform telemetry."
     note "It cannot be automated. Allowing a .envrc is a trust decision, and a"
     note "setup script that made it for you would defeat the point of direnv."
-  else
-    note "This project ships a .envrc that opts out of test platform telemetry."
-    note "Install direnv to use it, or export those variables yourself."
   fi
 fi
 
