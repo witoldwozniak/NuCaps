@@ -35,13 +35,26 @@ The published capability records are the point of the project. The command line 
 
 ## Building and testing
 
-You need the .NET 10 software development kit.
+You need the .NET 10 software development kit, and [ShellCheck](https://www.shellcheck.net) for the shell script check.
+
+```bash
+script/check
+```
+
+That is the single check command. It runs four things:
+
+- ShellCheck over the shell scripts.
+- A build, with warnings treated as errors.
+- Every test.
+- A formatting check against `.editorconfig`.
+
+Continuous integration runs this same script and nothing else, so a green run here is a green run there.
+
+To run only the tests while you work:
 
 ```bash
 dotnet test
 ```
-
-That is the single check command. It restores, builds, and runs every test.
 
 ## Decisions
 

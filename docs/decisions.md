@@ -13,8 +13,8 @@ This document records the decisions that shape this repository, each with its re
 ## Testing
 
 - **Test with TUnit.** Chosen over xUnit v3 and the in-box xUnit v2 template. Source generated, no reflection at runtime, and fast across a large corpus run.
-- **`dotnet test` is the single check command.** TUnit runs on Microsoft.Testing.Platform, which the .NET 10 software development kit opts into through `global.json`. The older `TestingPlatformDotnetTestSupport` property is the legacy Visual Studio Test route and the .NET 10 software development kit rejects it.
-- **Opt out of test platform telemetry, in `.envrc`.** The `TUnit` package pulls in a telemetry extension. A tool that reports what other packages do should not send usage data itself.
+- **`dotnet test` is the single test command.** TUnit runs on Microsoft.Testing.Platform, which the .NET 10 software development kit opts into through `global.json`. The older `TestingPlatformDotnetTestSupport` property is the legacy Visual Studio Test route and the .NET 10 software development kit rejects it.
+- **Opt out of .NET and test platform telemetry, in `.envrc`.** The `TUnit` package pulls in a telemetry extension, and the software development kit reports usage of its own. A tool that reports what other packages do should not send usage data itself. `.envrc` sets `TESTINGPLATFORM_TELEMETRY_OPTOUT` and `DOTNET_CLI_TELEMETRY_OPTOUT`, and the continuous integration workflow sets the same two, because `.envrc` covers local runs only.
 
 ## Licensing and authorship
 

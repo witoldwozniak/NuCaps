@@ -64,4 +64,5 @@ if [[ -f .envrc ]]; then
 fi
 
 step "Ready"
-note "Run the checks with: dotnet test"
+note "Run every check with: script/check"
+note "That is the same command continuous integration runs. It needs ShellCheck installed."

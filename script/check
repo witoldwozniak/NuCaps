@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+#
+# Runs every check this project has. Run it before you push.
+#
+#   script/check
+#
+# Continuous integration runs this same script and nothing else, so a green run here
+# means a green run there. That is the whole point. Two lists of checks drift apart,
+# and the one that drifts is always the list you are not looking at.
+#
+# This follows the "Scripts to Rule Them All" convention, alongside script/bootstrap.
+
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+step() { printf '\n==> %s\n' "$1"; }
+note() { printf '    %s\n' "$1"; }
+
+fail() {
+  printf '\nCheck failed: %s\n' "$1" >&2
+  exit 1
+}
+
+# ShellCheck runs first because it needs no software development kit, so it is the
+# cheapest check to fail on.
+#
+# Scripts are found by their shebang line rather than from a fixed list, because none
+# of them carries a .sh extension and a hand-maintained list goes stale. An empty
+# result means the search is wrong, not that there is nothing to check.
+step "Checking shell scripts"
+
+if ! command -v shellcheck >/dev/null 2>&1; then
+  note "shellcheck was not found on your PATH."
+  fail "install ShellCheck from https://www.shellcheck.net, then run this again"
+fi
+
+mapfile -t scripts < <(grep -rlE '^#!.*sh$' .githooks script .claude/hooks)
+
+if [[ ${#scripts[@]} -eq 0 ]]; then
+  fail "found no shell scripts. The search is wrong, or the scripts moved."
+fi
+
+printf '    %s\n' "${scripts[@]}"
+shellcheck "${scripts[@]}"
+
+# Warnings are errors, set unconditionally in Directory.Build.props. There is no flag
+# to pass here, and a build that prints a warning has already failed.
+step "Building"
+dotnet build NuCaps.slnx
+
+step "Testing"
+dotnet test
+
+# Enforces the style and naming rules in .editorconfig, which nothing else checks.
+step "Checking formatting"
+dotnet format NuCaps.slnx --verify-no-changes
+
+step "Every check passed"
