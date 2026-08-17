@@ -33,40 +33,79 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # ShellCheck 0.9.0 ships on the ubuntu-24.04 image, so this needs no install
-      # step and adds no dependency. A developer machine running a newer ShellCheck
-      # is the stricter of the two, so local runs catch more than this does, never
-      # less. This step needs no software development kit, so it runs first and
-      # fails fast.
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      # One command, and the same one you run before pushing. This job deliberately
+      # keeps no list of its own, because two lists of checks drift apart and the one
+      # that drifts is always the list nobody runs by hand.
       #
-      # Scripts are found by their shebang rather than from a fixed list, because
-      # neither of them carries a .sh extension and a list gets stale. The empty
-      # check stops a broken search from passing as "nothing to check".
-      - name: Check shell scripts
-        run: |
-          mapfile -t scripts < <(grep -rlE '^#!.*sh$' .githooks script)
-          if [[ ${#scripts[@]} -eq 0 ]]; then
-            echo "Found no shell scripts. The search is wrong, or the scripts moved." >&2
-            exit 1
-          fi
-          printf 'Checking %s\n' "${scripts[@]}"
-          shellcheck "${scripts[@]}"
+      # ShellCheck ships preinstalled on GitHub's Ubuntu runner images, so nothing here
+      # installs it. The version is whatever the current image carries, and it is
+      # usually older than the one on a developer machine. That is the safe direction,
+      # because a newer ShellCheck reports more, so a local run catches everything this
+      # one catches.
+      - name: Run every check
+        run: script/check
+
+  # Runs the newcomer path end to end: a fresh clone, then script/bootstrap. The
+  # script exists for exactly one situation, somebody who has never seen this project
+  # cloning it and running it, so a fresh runner is the correct test rather than a
+  # substitute for one.
+  #
+  # This is a separate job rather than a step in `check`, for two reasons. The
+  # checkout stays untouched by anything else, which is the whole point. And bootstrap
+  # sets core.hooksPath, which would otherwise apply to every git command in the rest
+  # of the job.
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
-      # ContinuousIntegrationBuild turns warnings into errors. Directory.Build.props
-      # sets that only when this variable is true, so this is the one place the gate
-      # actually runs.
-      - name: Build, treating warnings as errors
-        run: dotnet build NuCaps.slnx -p:ContinuousIntegrationBuild=true
+      # Three assertions. The script has to succeed, it has to set the hooks path, and
+      # the .envrc block has to run instead of being skipped.
+      #
+      # Which of the three direnv branches runs is deliberately not asserted. That
+      # depends on whether the runner image ships direnv, which GitHub can change
+      # without warning, and a change there is not a failure in this project. All
+      # three branches mention .envrc, so that is the part worth pinning.
+      - name: Run bootstrap on a fresh clone
+        run: |
+          set -euo pipefail
+          script/bootstrap | tee "$RUNNER_TEMP/bootstrap.txt"
 
-      - name: Test
-        run: dotnet test
+          hooks_path="$(git config --get core.hooksPath || true)"
+          if [[ "$hooks_path" != ".githooks" ]]; then
+            echo "core.hooksPath is '$hooks_path', expected '.githooks'." >&2
+            exit 1
+          fi
 
-      # Enforces the style and naming rules in .editorconfig, which nothing else
-      # checks automatically.
-      - name: Check formatting
-        run: dotnet format NuCaps.slnx --verify-no-changes
+          if ! grep -q '\.envrc' "$RUNNER_TEMP/bootstrap.txt"; then
+            echo "bootstrap said nothing about .envrc, so the environment block was skipped." >&2
+            exit 1
+          fi
+
+      # The script's own header promises that running it again is safe and does
+      # nothing new. That promise is worth checking, because it is the difference
+      # between a setup script somebody reruns without thinking and one they run once
+      # and then avoid.
+      - name: Run bootstrap a second time
+        run: |
+          set -euo pipefail
+          script/bootstrap
+
+          hooks_path="$(git config --get core.hooksPath || true)"
+          if [[ "$hooks_path" != ".githooks" ]]; then
+            echo "core.hooksPath changed on the second run to '$hooks_path'." >&2
+            exit 1
+          fi
