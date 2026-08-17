@@ -3,6 +3,7 @@
     "deny": [
       "Edit(/src/**/*.cs)",
       "Edit(/src/*.cs)",
+
       "Bash(git init:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
@@ -17,12 +18,47 @@
       "Bash(git worktree:*)",
       "Bash(git restore:*)",
       "Bash(git tag:*)",
-      "Bash(dotnet nuget push:*)"
+
+      "Bash(git clean:*)",
+      "Bash(git rm:*)",
+      "Bash(git mv:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git revert:*)",
+      "Bash(git am:*)",
+      "Bash(git apply:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git update-ref:*)",
+      "Bash(git gc:*)",
+      "Bash(git prune:*)",
+      "Bash(git repack:*)",
+      "Bash(git sparse-checkout:*)",
+      "Bash(git replace:*)",
+      "Bash(git pull:*)",
+      "Bash(git fetch:*)",
+
+      "Bash(dotnet nuget push:*)",
+      "Bash(dotnet new:*)"
     ]
   },
+
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-bash"
+          }
+        ]
+      }
+    ]
+  },
+
   "worktree": {
     "bgIsolation": "none"
   },
+
   "enabledPlugins": {
     "csharp-lsp@claude-plugins-official": true
   }

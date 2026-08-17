@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+#
+# Tests .claude/hooks/guard-bash against commands it must block and commands it
+# must not.
+#
+#   script/test-guard-bash
+#
+# The guard is an allowlist, so the cases that matter most are the ones it must
+# still permit. An allowlist that quietly stops allowing a read is discovered as a
+# blocked command in the middle of other work, which is the moment nobody wants to
+# debug a hook. The deny cases are the bypasses that a settings.json pattern cannot
+# catch: extra whitespace, an option before the subcommand, a wrapper, a command
+# substitution, and a compound command.
+#
+# Nothing here runs git or dotnet. The guard is fed a hook payload on standard
+# input and judged by what it prints, so a case can name a destructive command
+# without any risk of running it.
+
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+GUARD=".claude/hooks/guard-bash"
+
+if [[ ! -x "$GUARD" ]]; then
+  echo "$GUARD is missing or not executable." >&2
+  exit 1
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "jq is needed to build the test payloads. Install it and run this again." >&2
+  exit 1
+fi
+
+passed=0
+failed=0
+
+# check WANT COMMAND, where WANT is allow or deny.
+check() {
+  local want="$1" cmd="$2" out got
+
+  out="$(printf '%s' "$cmd" | jq -Rs '{tool_name:"Bash", tool_input:{command:.}}' | "$GUARD")"
+
+  if [[ -z "$out" ]]; then got=allow; else got=deny; fi
+
+  if [[ "$got" == "$want" ]]; then
+    printf '  pass  %-5s  %s\n' "$got" "$cmd"
+    passed=$((passed + 1))
+  else
+    printf '  FAIL  wanted %s, got %s:  %s\n' "$want" "$got" "$cmd"
+    failed=$((failed + 1))
+  fi
+}
+
+echo
+echo "Reads and permitted commands, which must still run:"
+check allow "git log --oneline"
+check allow "git diff HEAD"
+check allow "git show HEAD:README.md"
+check allow "git status --porcelain"
+check allow "git ls-files"
+check allow "git config --get core.hooksPath"
+check allow "git branch"
+check allow "git branch --list"
+check allow "git branch -a"
+check allow "git tag -l"
+check allow "git remote -v"
+check allow "git stash list"
+check allow "git worktree list"
+check allow "git reflog"
+check allow "dotnet build"
+check allow "dotnet test"
+check allow "dotnet list package"
+check allow "dotnet format NuCaps.slnx --verify-no-changes"
+check allow "dotnet msbuild x.csproj -getProperty:Foo"
+check allow "echo hello"
+check allow "rg pattern src"
+
+echo
+echo "Commands that change the repository:"
+check deny "git commit -m x"
+check deny "git push"
+check deny "git clean -fdx"
+check deny "git rm foo"
+check deny "git cherry-pick abc"
+check deny "git pull"
+check deny "git checkout main"
+check deny "git stash"
+check deny "git tag v1.0"
+check deny "git branch -d main"
+check deny "git worktree add ../wt"
+check deny "git submodule update"
+
+echo
+echo "The one a settings.json pattern cannot express, because it reads the argument:"
+check deny "git config core.hooksPath .githooks"
+check deny "dotnet format"
+check deny "dotnet format NuCaps.slnx"
+
+echo
+echo "Bypasses that prefix matching misses:"
+check deny "git  commit -m x"
+check deny "git -C . commit -m x"
+check deny "cd /tmp && git commit -m x"
+check deny "foo; git branch -D main"
+check deny "echo \$(git push)"
+check deny "env git push"
+check deny "sudo git push"
+check deny "xargs git commit"
+check deny "timeout 30 git push"
+check deny "/usr/bin/git push"
+
+echo
+echo "Commands to propose rather than run:"
+check deny "dotnet new console"
+check deny "dotnet add package Foo"
+check deny "dotnet remove package Foo"
+check deny "dotnet nuget push x.nupkg"
+check deny "dotnet tool install x"
+
+echo
+if [[ "$failed" -eq 0 ]]; then
+  echo "All $passed cases passed."
+else
+  echo "$failed of $((passed + failed)) cases failed."
+  exit 1
+fi

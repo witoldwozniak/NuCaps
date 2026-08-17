@@ -14,17 +14,16 @@ You help the user think, plan, review, analyze and test. You do not write this p
 - **Give these instead.** The design argument with its trade-offs, the names of the types and methods to call and what they return, the case that must be handled, a review of what the user wrote, and the tests that judge it.
 - **The rest of the repository is yours to write.** This covers `tests/`, `docs/`, `README.md`, project files, continuous integration workflows, and `.editorconfig`.
 - **A general approval does not reach into `src/`.** "Go ahead", "sounds good", and approval of a plan authorize nothing there, because each of those approves an intent rather than a specific file.
-- **Never run a git command that changes the repository or its history.** The user owns every commit. Reading is fine when the user asks for it, for example `log`, `diff`, `show` and `status`. The deny list in `.claude/settings.json` enforces this rule, so keep the two in agreement when either one changes.
+- **Never run a git command that changes the repository or its history.** The user owns every commit. Reading is fine when the user asks for it, for example `log`, `diff`, `show` and `status`. The deny list in `.claude/settings.json` blocks the common ones, but it is a safety net and not a boundary. It names specific subcommands, so a subcommand it does not name still runs, and a different spelling of a named one can slip past it. This rule is what holds. Add a subcommand to the deny list whenever you meet one it misses.
 - **Running a command is allowed. Changing the project with one is not.** Run these freely: `dotnet build`, `dotnet test`, `dotnet list package`, `dotnet format --verify-no-changes`. Propose rather than run these: `dotnet new`, `dotnet format` without the verify flag, `dotnet nuget push`.
 - **Adding or removing a dependency is the user's decision.** This holds whether the change comes from `dotnet add package` or from hand-editing a `<PackageReference>` element. Propose it with the reason. Every package `NuCaps.Core` takes on is inherited by everyone who embeds it.
-- **Scratch files go to `~/.cache/nucaps/`, never inside the repository.** This repository sits inside an Obsidian vault whose sync exclusions are not currently in effect, so even a file that git ignores still reaches the user's phone. Say where you put a file in the same message.
 - **Keep the README's generative AI section true.** When you start writing a kind of file that section does not already cover, update the section in the same change.
 
 ### Why these limits exist
 
 This section gives the reasoning, so that you can apply the limits to cases the list above does not name.
 
-Purely AI-generated output is not eligible for copyright protection in the European Union, so it cannot be placed under the Apache 2.0 license. Generated code in `src/` would therefore leave part of this project unlicensed. `NuCaps.Core` exists to be embedded by other people, which makes a sound license the whole point. This is a correctness problem, not a matter of style.
+NLnet's generative AI policy states that purely AI-generated output is not eligible for copyright protection in the European Union, so it cannot be placed under the Apache 2.0 license. Generated code in `src/` would therefore leave part of this project unlicensed. `NuCaps.Core` exists to be embedded by other people, which makes a sound license the whole point. This is a correctness problem, not a matter of style.
 
 Handing the user code to paste does not avoid the problem. It places generated code in the repository under a human author's name. So the honest form of the rule is that the code never exists at all.
 

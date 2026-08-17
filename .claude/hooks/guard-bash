@@ -1,0 +1,198 @@
+#!/usr/bin/env bash
+#
+# Blocks the Bash commands that CLAUDE.md forbids the assistant to run.
+#
+# Claude Code runs this before every Bash tool call. It reads the hook payload on
+# standard input, finds every git and dotnet invocation inside the command, and
+# denies the call unless each one is a read.
+#
+# Denying by default is the point of this file. The deny list in settings.json
+# enumerates what is forbidden, so anything nobody thought of is permitted, and a
+# git subcommand that did not exist when the list was written runs freely. This
+# reverses that: a git subcommand not named below is blocked, so the list ages in
+# the safe direction. It also reads arguments, which a settings.json pattern cannot.
+# That is what separates "git config --get core.hooksPath", which is a read, from
+# "git config core.hooksPath .githooks", which changes the repository.
+#
+# What this is not. A shell command can be built in ways this does not parse, for
+# example assembled from a variable or fed through a here-document. This is a strong
+# net, not an operating system boundary. If you need a boundary, use the sandbox.
+#
+# It fails closed. Every token is examined, so a mention of a forbidden command
+# inside a quoted string is denied too. Rephrase rather than working around it.
+#
+# Exit 0 with no output allows the command. Exit 0 with a JSON deny decision on
+# standard output blocks it.
+
+set -euo pipefail
+
+payload="$(cat)"
+
+# A JSON parser is needed to read the payload and to encode the reason safely.
+# Denying when none is present is deliberate: the guard cannot do its job, and
+# failing open would hide that from you.
+if command -v jq >/dev/null 2>&1; then
+  read_command() { printf '%s' "$payload" | jq -r '.tool_input.command // empty'; }
+  encode_string() { jq -Rs .; }
+elif command -v python3 >/dev/null 2>&1; then
+  read_command() {
+    printf '%s' "$payload" |
+      python3 -c 'import json,sys; sys.stdout.write(json.load(sys.stdin).get("tool_input",{}).get("command",""))'
+  }
+  encode_string() {
+    python3 -c 'import json,sys; sys.stdout.write(json.dumps(sys.stdin.read()))'
+  }
+else
+  printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"This repository guards Bash commands with .claude/hooks/guard-bash, which needs jq or python3 to read the hook payload. Neither is on PATH, so the guard cannot run and the command is denied. Install either one."}}'
+  exit 0
+fi
+
+deny() {
+  local reason encoded
+  reason="$1"
+  encoded="$(printf '%s' "$reason" | encode_string)"
+  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":%s}}\n' "$encoded"
+  exit 0
+}
+
+command_text="$(read_command)"
+
+[[ -n "$command_text" ]] || exit 0
+
+# Nothing to judge, so do not spend time parsing.
+if [[ "$command_text" != *git* && "$command_text" != *dotnet* ]]; then
+  exit 0
+fi
+
+# Returns 0 when this git subcommand only reads. Arguments after the subcommand are
+# passed in, because several subcommands both read and write depending on them.
+git_reads_only() {
+  local sub="${1:-}"
+  shift || true
+
+  case "$sub" in
+    log | show | diff | status | ls-files | ls-tree | rev-parse | rev-list | describe | blame | \
+      shortlog | grep | cat-file | for-each-ref | name-rev | merge-base | count-objects | \
+      verify-commit | verify-tag | check-ignore | check-attr | whatchanged | diff-tree | \
+      diff-index | show-ref | var | help | version | --version | --help)
+      return 0
+      ;;
+
+    # Reading needs an explicit read flag. Without one this writes.
+    config)
+      local argument
+      for argument in "$@"; do
+        case "$argument" in
+          --get | --get-all | --get-regexp | --list | -l) return 0 ;;
+        esac
+      done
+      return 1
+      ;;
+
+    # Bare lists. Any operand creates, deletes, or renames.
+    branch | tag)
+      [[ $# -eq 0 ]] && return 0
+      local argument
+      for argument in "$@"; do
+        case "$argument" in
+          -l | --list | --show-current | -a | -r | --all | --remotes) ;;
+          *) return 1 ;;
+        esac
+      done
+      return 0
+      ;;
+
+    # Bare "git stash" is a push, so it is not a read.
+    stash)
+      case "${1:-}" in list | show) return 0 ;; *) return 1 ;; esac
+      ;;
+
+    reflog | notes)
+      case "${1:-}" in "" | list | show) return 0 ;; *) return 1 ;; esac
+      ;;
+
+    remote)
+      case "${1:-}" in "" | -v | --verbose | show | get-url) return 0 ;; *) return 1 ;; esac
+      ;;
+
+    worktree)
+      case "${1:-}" in list) return 0 ;; *) return 1 ;; esac
+      ;;
+
+    submodule)
+      case "${1:-}" in status | summary) return 0 ;; *) return 1 ;; esac
+      ;;
+
+    bisect)
+      case "${1:-}" in log | view) return 0 ;; *) return 1 ;; esac
+      ;;
+
+    *) return 1 ;;
+  esac
+}
+
+# Returns 0 when this dotnet subcommand is one CLAUDE.md allows to run. Unlike git,
+# most of dotnet is permitted, so this names what is not.
+dotnet_is_allowed() {
+  local sub="${1:-}"
+  shift || true
+
+  case "$sub" in
+    new | add | remove) return 1 ;;
+    nuget) case "${1:-}" in push | delete | sign) return 1 ;; *) return 0 ;; esac ;;
+    package) case "${1:-}" in add | remove) return 1 ;; *) return 0 ;; esac ;;
+    sln | solution) case "${1:-}" in add | remove) return 1 ;; *) return 0 ;; esac ;;
+    workload | tool) case "${1:-}" in install | update | uninstall | restore) return 1 ;; *) return 0 ;; esac ;;
+
+    # The verify flag is what makes this a check rather than a rewrite.
+    format)
+      local argument
+      for argument in "$@"; do
+        [[ "$argument" == "--verify-no-changes" ]] && return 0
+      done
+      return 1
+      ;;
+
+    *) return 0 ;;
+  esac
+}
+
+# Break the command where a new command can begin: at a shell operator, and at the
+# edges of a command substitution. Splitting too eagerly is safe, because a piece
+# that holds no git or dotnet token is ignored.
+pieces="$command_text"
+pieces="${pieces//&&/$'\n'}"
+pieces="${pieces//||/$'\n'}"
+pieces="${pieces//|&/$'\n'}"
+pieces="${pieces//\$(/$'\n'}"
+pieces="${pieces//\`/$'\n'}"
+pieces="${pieces//)/$'\n'}"
+pieces="${pieces//;/$'\n'}"
+pieces="${pieces//|/$'\n'}"
+pieces="${pieces//&/$'\n'}"
+
+while IFS= read -r piece; do
+  words=()
+  read -ra words <<<"$piece" || true
+  [[ ${#words[@]} -gt 0 ]] || continue
+
+  for index in "${!words[@]}"; do
+    # Match the program name whether it is bare or an absolute path, so /usr/bin/git
+    # is judged the same as git. Wrappers such as env, sudo, xargs and timeout need
+    # no special handling, because every token is examined rather than only the first.
+    case "${words[$index]##*/}" in
+      git)
+        if ! git_reads_only "${words[@]:index+1}"; then
+          deny "This repository does not let the assistant change git state. \"${words[*]:index}\" is not on the read-only list in .claude/hooks/guard-bash, so it was blocked. The user owns every commit. Ask them to run it, or use a read such as git log, git diff, git show or git status. If this is a read that the list is missing, say so and it can be added."
+        fi
+        ;;
+      dotnet)
+        if ! dotnet_is_allowed "${words[@]:index+1}"; then
+          deny "CLAUDE.md says to propose this rather than run it. \"${words[*]:index}\" changes the project: it adds or removes a dependency, scaffolds a file, rewrites formatting, or publishes. Describe the change and the reason instead, and let the user run it. Note that dotnet format is allowed with --verify-no-changes, which checks without rewriting."
+        fi
+        ;;
+    esac
+  done
+done <<<"$pieces"
+
+exit 0
