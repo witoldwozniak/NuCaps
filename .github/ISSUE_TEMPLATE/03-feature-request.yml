@@ -1,0 +1,75 @@
+# Somebody wants NuCaps to do something it does not do.
+#
+# The problem comes before the solution, on purpose. A request written as a solution
+# hides the problem behind it, and the problem is the part worth reading. What you do
+# today is required for the same reason: it shows what the gap actually costs, which a
+# feature description never does.
+#
+# There is deliberately no "would you like to work on this?" checkbox. Pull requests
+# are a recorded deferral in docs/decisions.md and this project pushes to main
+# directly, so asking for help before there is a way to accept it would promise
+# something the project cannot deliver yet. Add it when the contribution path exists.
+
+name: Feature request
+description: NuCaps does not do something you need. Describe the problem first.
+title: "Feature: "
+labels:
+  - enhancement
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when NuCaps does not do something you need.
+
+        NuCaps is early and nothing is released yet, so a request may sit a while before it can be answered. Send it anyway. A request that arrives before the code is written can still change the design, and that is the cheapest moment to change it.
+
+        Two other things have their own route:
+
+        - A capability record that is wrong about a package is a correction, not a feature. Use the capability data correction form.
+        - Something that crashes, hangs, or will not run is a bug. Use the bug report form.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem do you have?
+      description: Describe the situation you are in, not the feature you want. The feature comes further down. A problem stated plainly often has a cheaper answer than the one you arrived with.
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: What do you do about it today?
+      description: "Any answer helps, including \"I check it by hand\" or \"I go without\". What you do now shows what the gap actually costs, which a description of the feature cannot show."
+    validations:
+      required: true
+
+  - type: textarea
+    id: wanted
+    attributes:
+      label: What would you like NuCaps to do?
+      description: Optional. Say it if you have something in mind. It is optional because the problem above matters more, and a good problem sometimes has a better answer than the one you expected.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of NuCaps?
+      description: A rough answer is fine. Pick "I am not sure" rather than guessing.
+      options:
+        - NuCaps.Core, the analysis engine
+        - NuCaps.Cli, the command line tool
+        - The published capability records or the schema
+        - I am not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else
+      description: Optional. Links, prior art in other tools, or an example package that shows the problem.
+    validations:
+      required: false

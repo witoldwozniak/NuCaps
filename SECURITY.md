@@ -26,6 +26,6 @@ NuCaps reads compiled code from packages that nobody trusts. Three kinds of prob
 
 ## What does not count
 
-A capability report that is merely wrong or incomplete is a bug. Open a normal issue for it, with the package and version that produced it.
+A capability report that is merely wrong or incomplete is a bug. Use the capability data correction form on the Issues tab. It asks for the package, the version, and how you checked.
 
 The difference from the third case above is repeatability and intent. A gap anyone can exploit deliberately is a vulnerability. An analysis that misses something because the feature is not built yet is a bug, and the limits of the analysis are documented rather than hidden.

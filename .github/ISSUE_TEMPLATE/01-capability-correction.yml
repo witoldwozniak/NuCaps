@@ -1,0 +1,95 @@
+# The dispute path for a wrong capability record.
+#
+# This form comes first in the chooser, which is why the file name starts with 01.
+# GitHub orders the chooser by file name, and this is the report that matters most.
+# NuCaps publishes claims about software other people wrote, so the way to correct a
+# claim has to be the most obvious thing on the page.
+#
+# Only four fields are required. Every extra required field loses reporters, and a
+# rough correction that arrives beats a precise one that nobody bothers to send.
+
+name: Capability data correction
+description: A published capability record is wrong about a package. Say which record and why.
+title: "Capability record: "
+labels:
+  - data-correction
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when a published capability record is wrong about a package.
+
+        NuCaps makes public claims about software other people wrote. A wrong claim can harm a package's reputation, so a correction counts as real work here rather than as a complaint. You do not need to be the package author to send one.
+
+        Two other things belong somewhere else:
+
+        - A crash, a hang, or a tool that will not run is a bug. Use the bug report form.
+        - A repeatable way to make NuCaps miss a capability on purpose is a vulnerability. Report it privately instead. The [security policy](https://github.com/witoldwozniak/NuCaps/blob/main/SECURITY.md) explains why those two cases are different.
+
+  - type: input
+    id: purl
+    attributes:
+      label: Package URL (purl)
+      description: Include the version. Capabilities differ between versions of the same package, so a record without a version cannot be checked.
+      placeholder: pkg:nuget/Newtonsoft.Json@13.0.3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of mistake is it?
+      options:
+        - NuCaps reported a capability the package does not have
+        - NuCaps missed a capability the package does have
+        - The capability is right but a detail is wrong, for example the named native library
+    validations:
+      required: true
+
+  - type: input
+    id: capability
+    attributes:
+      label: Which capability?
+      description: Name it the way the record names it. Plain words are fine if you are not sure.
+      placeholder: Network access
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: How did you check?
+      description: Describe it in words. You do not need to paste intermediate language or name a method. Say what you looked at and what you found.
+      placeholder: I searched the package source for System.Net and the only match sits in a test project that does not ship.
+    validations:
+      required: true
+
+  # Optional, but this is the field most likely to explain the whole disagreement.
+  # A package ships one assembly per target framework and their capabilities really
+  # do differ, so a record can be correct for one and wrong for another.
+  - type: input
+    id: target-framework
+    attributes:
+      label: Which target framework did you look at?
+      description: Optional, and it often decides the answer. A package ships one assembly per target framework, and their capabilities genuinely differ. A record can be right for one and wrong for another.
+      placeholder: net8.0
+    validations:
+      required: false
+
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else
+      description: Optional. If you know which NuCaps version or data release produced the record, say so. An old record may already be corrected.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: about-you
+    attributes:
+      label: About you
+      description: Optional. It helps to know, because the person who wrote the package usually has the answer.
+      options:
+        - label: I maintain this package
+          required: false

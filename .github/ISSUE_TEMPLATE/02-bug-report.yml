@@ -1,0 +1,86 @@
+# NuCaps itself misbehaved.
+#
+# Four fields are required and the rest are optional. They are the ones without which
+# a report cannot move: the command, the output, the version, and the environment.
+#
+# No field carries a placeholder showing a command, because there is no command yet.
+# NuCaps.Cli is not built. Inventing an example here would publish an interface that
+# does not exist. Add placeholders once the command line tool is real.
+
+name: Bug report
+description: NuCaps crashed, hung, or did something you cannot explain.
+title: "Bug: "
+labels:
+  - bug
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when NuCaps itself misbehaves. Crashes, hangs, output that makes no sense, or a tool that will not install or run.
+
+        Two other things have their own route:
+
+        - A capability record that is wrong about a package has its own form, because a correction needs the package and your evidence. Use the capability data correction form.
+        - A repeatable way to make NuCaps miss a capability on purpose is a vulnerability. Report it privately instead. The [security policy](https://github.com/witoldwozniak/NuCaps/blob/main/SECURITY.md) explains why those two cases are different.
+
+  - type: textarea
+    id: what-you-ran
+    attributes:
+      label: What did you run?
+      description: The whole command, with every flag, exactly as you typed it. Flags often decide the behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Paste the output, including any error message and stack trace. The error itself is easier to act on than a description of the error.
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-you-expected
+    attributes:
+      label: What did you expect instead?
+      description: Optional. Skip it when the answer is obvious, for example a crash.
+    validations:
+      required: false
+
+  - type: input
+    id: nucaps-version
+    attributes:
+      label: Which version of NuCaps?
+      description: If you built it from source, give the commit hash. Nothing is released yet, so the commit hash is the likely answer today.
+    validations:
+      required: true
+
+  # Required, and deliberately not a render block. A textarea that sets render cannot
+  # be required, and this project analyzes platform invoke and native payloads that
+  # differ per operating system and runtime identifier. The environment is not
+  # optional information here, so guaranteeing it beats formatting it prettily.
+  - type: textarea
+    id: environment
+    attributes:
+      label: Your environment
+      description: Paste the output of `dotnet --info`. It reports the software development kit version, the operating system and the runtime identifier together, which is more reliable than typing them out.
+    validations:
+      required: true
+
+  - type: input
+    id: package
+    attributes:
+      label: Which package were you analyzing?
+      description: Optional, and worth filling in. Many bugs only appear on one package, so naming it often turns a report into a test case.
+      placeholder: pkg:nuget/Newtonsoft.Json@13.0.3
+    validations:
+      required: false
+
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else
+      description: Optional.
+    validations:
+      required: false

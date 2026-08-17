@@ -1,0 +1,22 @@
+# Controls what people see before they open an issue.
+#
+# Two kinds of report do not belong in the issue tracker, and both cause real harm
+# when they land there. A security problem posted in public tells everyone about the
+# weakness before there is a fix to install. A conduct report posted in public
+# exposes the person who made it. The links below move both somewhere else, before
+# someone types the wrong thing into the wrong box.
+
+# Blank issues stay available. Every form narrows what you are able to say, and
+# somebody whose problem fits no form should not be turned away at the door. This
+# project has no users yet, so losing a first report costs more than receiving an
+# unstructured one.
+blank_issues_enabled: true
+
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/witoldwozniak/NuCaps/security/advisories/new
+    about: Report privately through the Security tab. A public report tells everyone about the weakness before there is a fix.
+
+  - name: Report a code of conduct problem
+    url: https://github.com/witoldwozniak/NuCaps/blob/main/CODE_OF_CONDUCT.md
+    about: Read the reporting section for the email address, what to expect, and what this project is able to do about a report.
