@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Blocks the Bash commands that CLAUDE.md forbids the assistant to run.
+# Blocks the Bash commands that AGENTS.md forbids the assistant to run.
 #
 # Claude Code runs this before every Bash tool call. It reads the hook payload on
 # standard input, finds every git and dotnet invocation inside the command, and
@@ -131,7 +131,7 @@ git_reads_only() {
   esac
 }
 
-# Returns 0 when this dotnet subcommand is one CLAUDE.md allows to run. Unlike git,
+# Returns 0 when this dotnet subcommand is one AGENTS.md allows to run. Unlike git,
 # most of dotnet is permitted, so this names what is not.
 dotnet_is_allowed() {
   local sub="${1:-}"
@@ -188,7 +188,7 @@ while IFS= read -r piece; do
         ;;
       dotnet)
         if ! dotnet_is_allowed "${words[@]:index+1}"; then
-          deny "CLAUDE.md says to propose this rather than run it. \"${words[*]:index}\" changes the project: it adds or removes a dependency, scaffolds a file, rewrites formatting, or publishes. Describe the change and the reason instead, and let the user run it. Note that dotnet format is allowed with --verify-no-changes, which checks without rewriting."
+          deny "AGENTS.md says to propose this rather than run it. \"${words[*]:index}\" changes the project: it adds or removes a dependency, scaffolds a file, rewrites formatting, or publishes. Describe the change and the reason instead, and let the user run it. Note that dotnet format is allowed with --verify-no-changes, which checks without rewriting."
         fi
         ;;
     esac

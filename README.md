@@ -86,4 +86,4 @@ It is also used for research, design discussion, and code review.
 
 NLnet's generative AI policy states that purely AI-generated output is not eligible for copyright protection in the European Union, so such code could not be placed under Apache 2.0. `NuCaps.Core` exists to be embedded in other people's projects, which makes a sound license the whole point of it. The infrastructure sits outside the licensed work for the same reason, which the License section above states.
 
-The rules the assistant works under are written down in [`CLAUDE.md`](CLAUDE.md).
+The rules the assistant works under are written down in [`AGENTS.md`](AGENTS.md). `CLAUDE.md` imports that file, because Claude Code reads `CLAUDE.md` and other coding agents read `AGENTS.md`.

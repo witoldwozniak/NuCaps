@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Checks a commit message against the convention in CLAUDE.md.
+# Checks a commit message against the convention in AGENTS.md.
 #
 # This runs locally rather than in continuous integration because it has to. Force
 # pushes are blocked on main with no bypass, so a commit message that reaches the

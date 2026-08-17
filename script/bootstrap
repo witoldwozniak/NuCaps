@@ -44,7 +44,7 @@ step "Pointing git at this repository's hooks"
 # and force pushes are blocked on main, so a bad message there is permanent.
 git config core.hooksPath .githooks
 note "core.hooksPath is now .githooks"
-note "Commit messages are checked against the convention in CLAUDE.md."
+note "Commit messages are checked against the convention in AGENTS.md."
 
 step "Restoring packages"
 
