@@ -64,13 +64,30 @@ dotnet test
 
 Copyright © 2026 Witold Woźniak.
 
-- **Code.** [Apache 2.0](LICENSE).
+- **NuCaps itself**, meaning everything under `src/`. [Apache 2.0](LICENSE).
 - **Capability data and schema.** [CC BY 4.0](LICENSES/data-CC-BY-4.0.txt). Code licenses do not fit data, so the records carry an open data license of their own.
+
+The rest of the repository is infrastructure around the licensed project: the tests, the continuous integration workflows, the build configuration, the shell scripts and the documentation. It ships with the project and you may use it for any purpose. It is not part of the licensed work, and no copyright is claimed over it.
+
+One file is an exception. [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) is adapted from the Contributor Covenant and carries [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), which its own attribution section states.
 
 ## Use of generative AI
 
 This project is built with an AI assistant, under a restriction chosen deliberately: **no source code under `src/` is AI-generated.** A human author writes every line of the analysis engine and the command line tool.
 
-The assistant is used for research, design discussion, code review, and for writing tests, documentation, build configuration and continuous integration workflows. Those uses are disclosed here rather than logged in every commit, which is what [NLnet's generative AI policy](https://nlnet.nl/foundation/policies/generativeAI/) asks for when generative AI is not used to generate code.
+The assistant writes everything else in this repository:
+
+- The tests.
+- The documentation.
+- The issue templates.
+- The build and repository configuration, for example the project files, `global.json`, `.editorconfig`, `nuget.config` and the Dependabot configuration.
+- The continuous integration workflows.
+- The shell scripts.
+
+It is also used for research, design discussion, and code review.
+
+[NLnet's generative AI policy](https://nlnet.nl/foundation/policies/generativeAI/) requires a per-commit provenance log for generated code, and accepts a general description like this one where generative AI is used "only for tasks like testing or creating documentation". Testing produces code as well, which is what shows that the exemption turns on whether the work forms part of the delivered software rather than on whether it has syntax. This project reads it that way, and the list above is what that reading covers. The policy states that a per-commit log is preferred but not required in this case, and this project relies on the general description here instead. The delivered library and command line tool are written by a human.
+
+NLnet's generative AI policy states that purely AI-generated output is not eligible for copyright protection in the European Union, so such code could not be placed under Apache 2.0. `NuCaps.Core` exists to be embedded in other people's projects, which makes a sound license the whole point of it. The infrastructure sits outside the licensed work for the same reason, which the License section above states.
 
 The rules the assistant works under are written down in [`CLAUDE.md`](CLAUDE.md).

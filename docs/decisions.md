@@ -20,7 +20,8 @@ This document records the decisions that shape this repository, each with its re
 
 - **Apache 2.0 for code.** `NuCaps.Core` exists to be embedded, and a copyleft license would block adoption in most corporate .NET environments. Apache 2.0 also carries a patent grant and matches the surrounding ecosystem.
 - **CC BY 4.0 for the capability data and the schema.** Code licenses do not fit data. Attribution keeps NuCaps named when its records are used elsewhere.
-- **No AI-generated code under `src/`.** Purely AI-generated output carries no copyright in the European Union, so it cannot be placed under Apache 2.0. Generated code in `src/` would leave part of this project unlicensed, which matters most for a library meant to be embedded. `CLAUDE.md` holds the full rule.
+- **No AI-generated code under `src/`.** NLnet's generative AI policy states that purely AI-generated output is not eligible for copyright protection in the European Union, so such code could not be placed under Apache 2.0. Generated code in `src/` would leave part of this project unlicensed, which matters most for a library meant to be embedded. `CLAUDE.md` holds the full rule.
+- **Only `src/` is the licensed work. Everything else is infrastructure around it.** The tests, the workflows, the scripts, the build configuration and the documentation ship with the project and may be used for any purpose, and no copyright is claimed over them. This follows from the rule above rather than adding to it: an assistant writes all of that material, output with no copyright cannot be placed under Apache 2.0, and pretending otherwise would leave the license claiming something untrue. Drawing the boundary at `src/` makes one line answer three separate questions, namely what a human writes, what Apache 2.0 covers, and what ships to a consumer. `CODE_OF_CONDUCT.md` is the single exception, because it is adapted from the Contributor Covenant and carries that work's CC BY-SA 4.0.
 
 ## Conventions
 
