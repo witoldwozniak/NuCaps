@@ -1,0 +1,213 @@
+#!/usr/bin/env bash
+#
+# Tests script/bootstrap in throwaway containers.
+#
+#   script/test-bootstrap
+#
+# Continuous integration already covers the path where everything works, because
+# actions/setup-dotnet installs exactly the software development kit that global.json
+# names. This script covers what continuous integration cannot reach: a machine with
+# no software development kit, a machine with the wrong one, and each direnv branch.
+#
+# Nothing here touches your checkout. The repository travels into the container as a
+# tar stream on standard input, so there is no bind mount, no SELinux relabelling, and
+# no way for a test to write into your working tree. Every case runs with no network.
+#
+# Where a case is about direnv rather than about the software development kit, dotnet
+# is replaced by a stub. That keeps the run offline and quick, and it keeps each test
+# about one thing.
+
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+# An image with no software development kit, for the case where dotnet is missing.
+BARE_IMAGE="docker.io/library/debian:stable-slim"
+
+# An image carrying bash, tar, git and a software development kit new enough to
+# satisfy global.json. Every case that is about direnv rather than about the kit runs
+# here, with dotnet stubbed out.
+SDK_IMAGE="mcr.microsoft.com/dotnet/sdk:10.0"
+
+# A software development kit below the floor global.json sets: the same feature band
+# as the pinned version, at a lower patch. rollForward is latestFeature, so a newer
+# band is accepted but a lower patch never is.
+#
+# This case runs against real dotnet rather than a stub on purpose. What is being
+# tested is that dotnet enforces global.json and that bootstrap repeats what dotnet
+# said instead of inventing its own message, and a stub would test neither.
+OLD_SDK_IMAGE="mcr.microsoft.com/dotnet/sdk:10.0.100"
+
+if command -v podman >/dev/null 2>&1; then
+  ENGINE=podman
+elif command -v docker >/dev/null 2>&1; then
+  ENGINE=docker
+else
+  echo "Neither podman nor docker is on your PATH. One of them is required." >&2
+  exit 1
+fi
+
+# Build the payload once. obj and bin hold build output and account for almost all of
+# the repository's size, so excluding them takes the stream from about 50 megabytes to
+# under one. .git is kept deliberately, because bootstrap runs git config and that
+# needs a real repository to write into.
+PAYLOAD="$(mktemp -t nucaps-bootstrap-XXXXXX.tar)"
+trap 'rm -f "$PAYLOAD"' EXIT
+tar -cf "$PAYLOAD" \
+  --exclude='*/obj' --exclude='*/bin' --exclude='./.idea' \
+  --exclude='./.direnv' --exclude='./TestResults' --exclude='./.claude' .
+
+# Runs inside the container. Stub programs arrive as environment variables rather than
+# as here-documents, which keeps this one fixed string instead of a different script
+# per case, and avoids quoting a shell inside a shell inside a shell.
+# The quoted here-document delimiter matters. Everything below has to reach the
+# container unexpanded, because $STUB_DOTNET and $PATH are the container's variables
+# and not this shell's.
+#
+# tar extracts with --no-same-owner because tar running as root would otherwise keep
+# the user and group numbers recorded in the archive, which are the ones from the
+# machine that built it. Git then sees a repository owned by somebody else, refuses it
+# with "detected dubious ownership", and every case fails for a reason that has
+# nothing to do with bootstrap. Somebody who clones this project owns their own copy,
+# so making the container own its copy is the faithful arrangement rather than a
+# workaround.
+INNER=$(cat <<'SH'
+  set -e
+  mkdir -p /work && cd /work && tar -x --no-same-owner
+  mkdir -p /stub
+  if [ -n "${STUB_DOTNET:-}" ]; then printf "%s" "$STUB_DOTNET" > /stub/dotnet; chmod +x /stub/dotnet; fi
+  if [ -n "${STUB_DIRENV:-}" ]; then printf "%s" "$STUB_DIRENV" > /stub/direnv; chmod +x /stub/direnv; fi
+  export PATH=/stub:$PATH
+  exec script/bootstrap
+SH
+)
+
+# Runs bootstrap twice and checks that the hooks path survives, which is the promise
+# the script header makes about being safe to rerun.
+INNER_TWICE=$(cat <<'SH'
+  set -e
+  mkdir -p /work && cd /work && tar -x --no-same-owner
+  mkdir -p /stub
+  printf "%s" "$STUB_DOTNET" > /stub/dotnet; chmod +x /stub/dotnet
+  export PATH=/stub:$PATH
+  script/bootstrap > /dev/null
+  first="$(git config --get core.hooksPath || true)"
+  script/bootstrap > /dev/null
+  second="$(git config --get core.hooksPath || true)"
+  if [ "$first" = ".githooks" ] && [ "$second" = ".githooks" ]; then
+    echo "RERUN_IS_SAFE"
+  else
+    echo "hooks path was '$first' then '$second'" >&2
+    exit 1
+  fi
+SH
+)
+
+stub_dotnet() {
+  cat <<'EOF'
+#!/bin/sh
+case "$1" in
+  --version) echo "10.0.110" ;;
+  restore)   echo "stub dotnet restore: nothing to do" ;;
+  *)         : ;;
+esac
+EOF
+}
+
+# A direnv new enough to understand --json. The loadedRC record always reports allowed,
+# describing some other project's .envrc, because that is the trap: a check that reads
+# the whole document instead of foundRC finds this zero and calls an untrusted .envrc
+# trusted. Case four exists to keep that bug from coming back.
+stub_direnv_modern() {
+  cat <<EOF
+#!/bin/sh
+if [ "\$1" = status ] && [ "\$2" = --json ]; then
+  cat <<'JSON'
+{
+  "config": { "ConfigDir": "/root/.config/direnv", "SelfPath": "/stub/direnv" },
+  "state": {
+    "foundRC":  { "allowed": $1, "path": "/work/.envrc" },
+    "loadedRC": { "allowed": 0, "path": "/somewhere/else/.envrc" }
+  }
+}
+JSON
+  exit 0
+fi
+exit 1
+EOF
+}
+
+# A direnv too old to understand --json, which falls back to the human-readable text.
+stub_direnv_old() {
+  cat <<EOF
+#!/bin/sh
+if [ "\$1" = status ] && [ "\$2" = --json ]; then
+  exit 1
+fi
+echo "Found RC allowed $1"
+EOF
+}
+
+passed=0
+failed=0
+
+# run_case NAME IMAGE WANT_STATUS WANT_TEXT [STUB_DOTNET] [STUB_DIRENV] [INNER_SCRIPT]
+run_case() {
+  local name="$1" image="$2" want_status="$3" want_text="$4"
+  local sd="${5:-}" sdir="${6:-}" inner="${7:-$INNER}"
+  local out status ok=true
+
+  out="$("$ENGINE" run --rm -i --network=none \
+    -e "STUB_DOTNET=$sd" -e "STUB_DIRENV=$sdir" \
+    "$image" bash -c "$inner" < "$PAYLOAD" 2>&1)" && status=0 || status=$?
+
+  [[ "$status" -eq "$want_status" ]] || ok=false
+  grep -qF -- "$want_text" <<<"$out" || ok=false
+
+  if [[ "$ok" == true ]]; then
+    printf '  pass  %s\n' "$name"
+    passed=$((passed + 1))
+  else
+    printf '  FAIL  %s\n' "$name"
+    printf '        wanted exit %s and text %s\n' "$want_status" "\"$want_text\""
+    printf '        got exit %s\n' "$status"
+    while IFS= read -r line; do printf '        | %s\n' "$line"; done <<<"$out"
+    failed=$((failed + 1))
+  fi
+}
+
+echo
+echo "Testing script/bootstrap with $ENGINE, offline, in throwaway containers."
+echo
+
+echo "The software development kit:"
+run_case "missing entirely" "$BARE_IMAGE" 1 \
+  "install the .NET 10 software development kit" "" ""
+run_case "present but older than global.json requires" "$OLD_SDK_IMAGE" 1 \
+  "does not satisfy global.json" "" ""
+
+echo
+echo "The .envrc reminder:"
+run_case "direnv not installed" "$SDK_IMAGE" 0 \
+  "Install direnv to use it" "$(stub_dotnet)" ""
+run_case "modern direnv, .envrc not trusted" "$SDK_IMAGE" 0 \
+  "Run: direnv allow" "$(stub_dotnet)" "$(stub_direnv_modern 1)"
+run_case "modern direnv, .envrc trusted" "$SDK_IMAGE" 0 \
+  "already allowed" "$(stub_dotnet)" "$(stub_direnv_modern 0)"
+run_case "old direnv, .envrc not trusted" "$SDK_IMAGE" 0 \
+  "Run: direnv allow" "$(stub_dotnet)" "$(stub_direnv_old 1)"
+run_case "old direnv, .envrc trusted" "$SDK_IMAGE" 0 \
+  "already allowed" "$(stub_dotnet)" "$(stub_direnv_old 0)"
+
+echo
+echo "Running it twice:"
+run_case "rerunning changes nothing" "$SDK_IMAGE" 0 \
+  "RERUN_IS_SAFE" "$(stub_dotnet)" "" "$INNER_TWICE"
+
+echo
+if [[ "$failed" -eq 0 ]]; then
+  echo "All $passed cases passed."
+else
+  echo "$failed of $((passed + failed)) cases failed."
+  exit 1
+fi
