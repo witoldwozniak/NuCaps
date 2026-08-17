@@ -1,16 +1,12 @@
 # NuCaps
 
-NuCaps produces open capability metadata for the NuGet ecosystem. It reports which privileged operations each package can reach, derived from the package's compiled intermediate language, which is the instruction set that .NET compilers emit. Records are keyed to [purl](https://github.com/package-url/purl-spec) (package URL) identifiers. A command line tool is the reference producer.
+NuCaps produces open capability metadata for the NuGet ecosystem. It reports which privileged operations each package can reach, derived from the package's compiled intermediate language. Records are keyed to [purl](https://github.com/package-url/purl-spec) (package URL) identifiers. The companion command line tool is the reference producer.
 
 > **Status: early.** Nothing here works yet. The repository exists ahead of the code so that its history is public from the first commit.
 
-## The problem
+## Why
 
-This section explains what NuCaps measures, and why no existing tool measures it for .NET.
-
-A NuGet package manifest declares which other packages it depends on. That is a claim about dependencies, not a statement about behavior. Nothing checks what the compiled code is able to do.
-
-A package can open network connections, start processes, read your file system, or call into native libraries through platform invoke. None of that has to appear anywhere you can see before you install it.
+A NuGet package can open network connections, start processes, read the file system, or call into native libraries through platform invoke. As of today, none of that has to appear anywhere you can see before you install it.
 
 Capability metadata reports those abilities directly, because it is read out of the compiled code rather than taken from what the author declared. NuCaps never loads and never executes the package it inspects, so a package you do not trust is still safe to analyze.
 
@@ -18,7 +14,7 @@ Capability metadata reports those abilities directly, because it is read out of 
 
 - **Platform invoke.** An assembly can declare a call into a native library, and that declaration lives in the metadata rather than in the code.
 - **Native payloads.** A package can ship compiled binaries under `runtimes/`. The package that declares the call is often not the package that ships the binary, so attributing a capability needs the dependency graph.
-- **Build-time code execution.** MSBuild files inside a package run during your build, before any of your own code runs.
+- **Build-time code execution.** MSBuild files inside a package run during build, before any of your own code runs.
 - **One package, several assemblies.** A package ships one assembly per target framework, and their capabilities genuinely differ. Some assemblies load native code at run time through `GetProcAddress` and `dlsym` instead of declaring it, so reading the wrong target framework can report no native dependency at all where there are hundreds.
 
 ## Shape

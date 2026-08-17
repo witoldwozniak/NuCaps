@@ -20,9 +20,9 @@
     <IsPackable>true</IsPackable>
     <PackageId>NuCaps.Core</PackageId>
     <Description>
-      Derives capability metadata from compiled .NET assemblies by reading IL: which privileged
-      operations a package can reach. Analysis is static — assemblies are never loaded or
-      executed.
+      Derives capability metadata from compiled .NET assemblies by reading their intermediate
+      language (IL): which privileged operations a package can reach. The analysis is static.
+      NuCaps never loads and never executes an assembly it inspects.
     </Description>
   </PropertyGroup>
 
